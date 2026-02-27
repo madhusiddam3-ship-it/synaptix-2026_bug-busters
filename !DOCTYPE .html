@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Farm Micro-Climate Monitoring System</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f8f2;
+    margin:0;
+    padding:0;
+}
+header{
+    background:#2e7d32;
+    color:white;
+    padding:15px;
+    text-align:center;
+}
+.container{
+    padding:20px;
+}
+.card{
+    background:white;
+    border-radius:10px;
+    padding:15px;
+    margin-bottom:20px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+}
+.metric{
+    font-size:20px;
+    font-weight:bold;
+}
+.alert{
+    color:white;
+    padding:10px;
+    border-radius:6px;
+    margin-top:10px;
+}
+.safe{ background:#2e7d32;}
+.warning{ background:#f9a825;}
+.danger{ background:#c62828;}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>🌾 Farm Micro-Climate Monitoring & Anomaly Detection</h2>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h3>🌡 Real-time Environmental Data</h3>
+<p>Temperature: <span id="temp" class="metric">--</span> °C</p>
+<p>Humidity: <span id="hum" class="metric">--</span> %</p>
+<p>Soil Moisture: <span id="soil" class="metric">--</span> %</p>
+</div>
+
+<div class="card">
+<h3>📊 Crop Stress Index (CSI)</h3>
+<p id="csi" class="metric">--</p>
+<div id="statusBox"></div>
+</div>
+
+<div class="card">
+<h3>📈 Live Data Graph</h3>
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+<script>
+
+// ----------------------------
+// Simulated or API data source
+// ----------------------------
+
+function getSensorData(){
+    // Replace with API call if needed
+    return {
+        temp: (Math.random()*10 + 25).toFixed(2),
+        hum: (Math.random()*30 + 40).toFixed(2),
+        soil: (Math.random()*40 + 30).toFixed(2)
+    };
+}
+
+// ----------------------------
+// Crop Stress Index Calculation
+// ----------------------------
+
+function calculateCSI(temp, hum, soil){
+    // Normalize values
+    let t = (temp - 20)/20;
+    let h = (100 - hum)/100;
+    let s = (50 - soil)/50;
+
+    let csi = (t*0.4 + h*0.3 + s*0.3) * 100;
+    return Math.max(0, Math.min(100, csi.toFixed(2)));
+}
+
+// ----------------------------
+// Anomaly Detection
+// ----------------------------
+
+function detectAnomaly(temp, hum, soil){
+    if(temp > 40 || temp < 15) return "Temperature anomaly";
+    if(hum < 30 || hum > 90) return "Humidity anomaly";
+    if(soil < 20) return "Soil moisture critical";
+    return null;
+}
+
+// ----------------------------
+// Chart Setup
+// ----------------------------
+
+const ctx = document.getElementById('chart').getContext('2d');
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [
+            {label:'Temperature', data:[]},
+            {label:'Humidity', data:[]},
+            {label:'Soil Moisture', data:[]},
+            {label:'CSI', data:[]}
+        ]
+    },
+    options: {
+        responsive:true,
+        animation:false
+    }
+});
+
+// ----------------------------
+// UI Update Loop
+// ----------------------------
+
+function updateSystem(){
+
+    let data = getSensorData();
+
+    let temp = parseFloat(data.temp);
+    let hum = parseFloat(data.hum);
+    let soil = parseFloat(data.soil);
+
+    let csi = calculateCSI(temp, hum, soil);
+
+    document.getElementById("temp").innerText = temp;
+    document.getElementById("hum").innerText = hum;
+    document.getElementById("soil").innerText = soil;
+    document.getElementById("csi").innerText = csi;
+
+    // Status
+    let statusBox = document.getElementById("statusBox");
+    let anomaly = detectAnomaly(temp, hum, soil);
+
+    if(anomaly){
+        statusBox.innerHTML = <div class="alert danger">⚠ ALERT: ${anomaly}</div>;
+    }
+    else if(csi > 70){
+        statusBox.innerHTML = <div class="alert danger">High Crop Stress</div>;
+    }
+    else if(csi > 40){
+        statusBox.innerHTML = <div class="alert warning">Moderate Stress</div>;
+}
+else{
+        statusBox.innerHTML = <div class="alert safe">Healthy Conditions</div>;
+    }
+
+    // Update Chart
+    let time = new Date().toLocaleTimeString();
+    chart.data.labels.push(time);
+    chart.data.datasets[0].data.push(temp);
+    chart.data.datasets[1].data.push(hum);
+    chart.data.datasets[2].data.push(soil);
+    chart.data.datasets[3].data.push(csi);
+
+    if(chart.data.labels.length > 10){
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(d => d.data.shift());
+    }
+    chart.update();
+}
+// Run every 3 seconds
