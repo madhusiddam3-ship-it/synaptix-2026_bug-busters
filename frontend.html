@@ -1,0 +1,210 @@
+from IPython.display import HTML
+
+HTML('''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Farm Micro-Climate Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:'Segoe UI', sans-serif;
+    background:#eef3ec;
+}
+
+header{
+    background:#1b5e20;
+    color:white;
+    padding:15px;
+    text-align:center;
+    font-size:22px;
+}
+
+.dashboard{
+    display:grid;
+    grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+    padding:20px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+    text-align:center;
+}
+
+.value{
+    font-size:28px;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+.green{color:#2e7d32;}
+.orange{color:#ef6c00;}
+.red{color:#c62828;}
+
+.statusBox{
+    margin-top:15px;
+    padding:12px;
+    border-radius:8px;
+    font-weight:bold;
+}
+
+.safe{background:#c8e6c9;color:#1b5e20;}
+.warn{background:#ffe0b2;color:#ef6c00;}
+.danger{background:#ffcdd2;color:#c62828;}
+
+.chartBox{
+    width:95%;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+}
+</style>
+</head>
+
+<body>
+
+<header>🌾 Farm Micro-Climate Monitoring Dashboard</header>
+
+<div class="dashboard">
+
+<div class="card">
+<h3>Temperature</h3>
+<div id="temp" class="value">--</div>
+</div>
+
+<div class="card">
+<h3>Humidity</h3>
+<div id="hum" class="value">--</div>
+</div>
+
+<div class="card">
+<h3>Soil Moisture</h3>
+<div id="soil" class="value">--</div>
+</div>
+
+<div class="card">
+<h3>Crop Stress Index</h3>
+<div id="csi" class="value">--</div>
+<div id="statusBox" class="statusBox"></div>
+</div>
+
+</div>
+
+<div class="chartBox">
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+
+function getSensorData(){
+    return {
+        temp:(Math.random()*12+24).toFixed(2),
+        hum:(Math.random()*35+40).toFixed(2),
+        soil:(Math.random()*40+30).toFixed(2)
+    }
+}
+
+function calculateCSI(t,h,s){
+    let tempScore=(t-20)/20;
+    let humScore=(100-h)/100;
+    let soilScore=(50-s)/50;
+
+    let csi=(tempScore*0.4+humScore*0.3+soilScore*0.3)*100;
+    return Math.max(0,Math.min(100,csi.toFixed(1)));
+}
+
+function detectAnomaly(t,h,s){
+    if(t>40 || t<15) return "Temperature Risk";
+    if(h<30 || h>90) return "Humidity Risk";
+    if(s<20) return "Soil Moisture Critical";
+    return null;
+}
+
+const ctx=document.getElementById('chart').getContext('2d');
+
+const chart=new Chart(ctx,{
+    type:'line',
+    data:{
+        labels:[],
+        datasets:[
+            {label:'Temp',data:[]},
+            {label:'Humidity',data:[]},
+            {label:'Soil',data:[]},
+            {label:'CSI',data:[]}
+        ]
+    },
+    options:{
+        responsive:true,
+        animation:false
+    }
+});
+
+function updateDashboard(){
+
+    let d=getSensorData();
+
+    let t=parseFloat(d.temp);
+    let h=parseFloat(d.hum);
+    let s=parseFloat(d.soil);
+
+    let csi=calculateCSI(t,h,s);
+
+    document.getElementById("temp").innerText=t+" °C";
+    document.getElementById("hum").innerText=h+" %";
+    document.getElementById("soil").innerText=s+" %";
+    document.getElementById("csi").innerText=csi;
+
+    document.getElementById("csi").className="value " + (csi<40?"green":csi<70?"orange":"red");
+
+    let status=document.getElementById("statusBox");
+    let anomaly=detectAnomaly(t,h,s);
+
+    if(anomaly){
+        status.className="statusBox danger";
+        status.innerText="⚠ "+anomaly;
+    }
+    else if(csi>70){
+        status.className="statusBox danger";
+        status.innerText="High Crop Stress";
+    }
+    else if(csi>40){
+        status.className="statusBox warn";
+        status.innerText="Moderate Stress";
+    }
+    else{
+        status.className="statusBox safe";
+        status.innerText="Healthy Crop";
+    }
+
+    let time=new Date().toLocaleTimeString();
+
+    chart.data.labels.push(time);
+    chart.data.datasets[0].data.push(t);
+    chart.data.datasets[1].data.push(h);
+    chart.data.datasets[2].data.push(s);
+    chart.data.datasets[3].data.push(csi);
+
+    if(chart.data.labels.length>12){
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(d=>d.data.shift());
+    }
+
+    chart.update();
+}
+
+setInterval(updateDashboard,3000);
+
+</script>
+
+</body>
+</html>
+''')
