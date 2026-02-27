@@ -1,0 +1,78 @@
+import streamlit as st
+import pandas as pd
+import time
+
+# Import your backend modules
+from data_stream import get_data
+from csi_model import calculate_csi
+from anomaly_model import detect_anomaly
+from alert import generate_alert
+
+st.set_page_config(page_title="Farm Micro-Climate Monitor", layout="wide")
+
+st.title("🌾 Farm Micro-Climate Monitoring & Anomaly Detection System")
+
+st.markdown("Real-time environmental monitoring with Crop Stress Index (CSI) and anomaly alerts")
+
+# ---- SIDEBAR ----
+st.sidebar.header("⚙ Settings")
+
+refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", 1, 5, 2)
+
+# ---- MAIN DASHBOARD ----
+placeholder = st.empty()
+
+while True:
+    # Get live sensor data
+    data = get_sensor_data()
+
+    temperature = data["temperature"]
+    humidity = data["humidity"]
+    soil = data["soil_moisture"]
+
+    # Calculate CSI
+    csi = calculate_csi(temperature, humidity, soil)
+
+    # Detect anomaly
+    anomaly = detect_anomaly(temperature, humidity, soil)
+
+    # Generate alert
+    alert_msg = generate_alert(csi, anomaly)
+
+    # Display UI
+    with placeholder.container():
+
+        st.subheader("📊 Live Sensor Data")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("🌡 Temperature (°C)", round(temperature, 2))
+        col2.metric("💧 Humidity (%)", round(humidity, 2))
+        col3.metric("🌱 Soil Moisture", round(soil, 2))
+
+        st.subheader("🌿 Crop Stress Index (CSI)")
+        st.progress(min(int(csi * 100), 100))
+        st.write(f"CSI Value: *{round(csi, 2)}*")
+
+        st.subheader("🚨 System Status")
+
+        if anomaly:
+            st.error("⚠️ Anomaly Detected in Environment!")
+        else:
+            st.success("✅ Environment Normal")
+
+        st.subheader("🔔 Alerts")
+
+        st.info(alert_msg)
+
+        # simple chart
+        df = pd.DataFrame({
+            "Temperature": [temperature],
+            "Humidity": [humidity],
+            "Soil": [soil]
+        })
+
+        st.subheader("📈 Live Data Snapshot")
+        st.line_chart(df)
+
+    time.sleep(refresh_rate)
